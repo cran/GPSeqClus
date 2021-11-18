@@ -7,8 +7,8 @@
 ind_clus_kml(
   AID,
   cn,
-  locs = dat,
-  cs = clus_summary,
+  locs,
+  cs,
   centroid_calc = "mean",
   overwrite = TRUE,
   dir = NULL
@@ -19,9 +19,9 @@ ind_clus_kml(
 
 \item{cn}{Desired cluster number}
 
-\item{locs}{Location dataframe output from GPSeq_clus(), default is 'dat'}
+\item{locs}{Location dataframe output from GPSeq_clus()}
 
-\item{cs}{Cluster summary output from GPSeq_clus(), default is 'clus_summary'}
+\item{cs}{Cluster summary output from GPSeq_clus()}
 
 \item{centroid_calc}{'mean' (default) or 'median' centroid plot}
 
@@ -37,14 +37,12 @@ Uses results from 'GPSeq_clus" to plot individual cluster .kmls
 }
 \examples{
 \donttest{
-GPSeq_clus(dat = ML_ex_dat[1:50,], search_radius_m = 200, window_days = 6,
-           clus_min_locs = 3, show_plots = c(FALSE, "mean"))
-ind_clus_kml(AID = "ML1605M", cn = 4)
-}
-\donttest{
-GPSeq_clus(dat = ML_ex_dat[1:50,], search_radius_m = 200, window_days = 6,
-           clus_min_locs = 3, show_plots = c(FALSE, "mean"))
-ind_clus_kml(AID = "ML1605M", cn = 4, centroid_calc = "median", overwrite = FALSE, dir= tempdir())
+ind_clus_kml(AID = "ML1605M", cn = 4,
+             locs = GPSeq_clus(dat = ML_ex_dat[1:50,], search_radius_m = 200, window_days = 6,
+                    clus_min_locs = 3, show_plots = c(FALSE, "mean"))[[1]],
+             cs = GPSeq_clus(dat = ML_ex_dat[1:50,], search_radius_m = 200, window_days = 6,
+                  clus_min_locs = 3, show_plots = c(FALSE, "mean"))[[2]]
+)
 }
 
 }

@@ -4,23 +4,16 @@
 \alias{exp_clus_gpx}
 \title{Export cluster .gpx file}
 \usage{
-exp_clus_gpx(
-  AID,
-  cn = "all",
-  locs = dat,
-  cs = clus_summary,
-  centroid_calc = "mean",
-  dir = NULL
-)
+exp_clus_gpx(AID, cn = "all", locs, cs, centroid_calc = "mean", dir = NULL)
 }
 \arguments{
 \item{AID}{Desired AID from sequential cluster output}
 
 \item{cn}{Numeric vector of desired cluster numbers to include in .gpx output, default is "all"}
 
-\item{locs}{Location dataframe output from GPSeq_clus(), default is 'dat'}
+\item{locs}{Location dataframe output from GPSeq_clus()}
 
-\item{cs}{Cluster summary output from GPSeq_clus(), default is 'clus_summary'}
+\item{cs}{Cluster summary output from GPSeq_clus()}
 
 \item{centroid_calc}{'mean' (default) or 'median' centroid plot}
 
@@ -35,14 +28,13 @@ for navigation during field site investigations.
 }
 \examples{
 \donttest{
-GPSeq_clus(dat = ML_ex_dat[1:50,], search_radius_m = 200, window_days = 6,
-           clus_min_locs = 3, show_plots = c(FALSE, "mean"))
-exp_clus_gpx(AID = "ML1605M", cn = 4, dir= tempdir())
-}
-\donttest{
-GPSeq_clus(dat = ML_ex_dat[1:50,], search_radius_m = 200, window_days = 6,
-           clus_min_locs = 3, show_plots = c(FALSE, "mean"))
-exp_clus_gpx(AID = "ML1605M", cn = c(1, 3, 4), centroid_calc = "median", dir= tempdir())
+exp_clus_gpx(AID = "ML1605M", cn = 4,
+             locs = GPSeq_clus(dat = ML_ex_dat[1:50,], search_radius_m = 200, window_days = 6,
+                    clus_min_locs = 3, show_plots = c(FALSE, "mean"))[[1]],
+             cs = GPSeq_clus(dat = ML_ex_dat[1:50,], search_radius_m = 200, window_days = 6,
+                  clus_min_locs = 3, show_plots = c(FALSE, "mean"))[[2]],
+             dir= tempdir()
+)
 }
 
 }

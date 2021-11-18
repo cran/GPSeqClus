@@ -17,14 +17,15 @@
 #' @param centroid_calc Method for recalculating centroids when actively building clusters - e.g., "median" or "mean" (default). Not to be confused with
 #'                      plotting the "mean" or "median" centroid once a cluster has been built.
 #' @param show_plots Vector of TRUE/FALSE for plotting followed by plotting argument for the "median" or "mean" centroid - e.g., c(TRUE, "mean") (default)
+#' @param scale_plot_clus When plotting, scale cluster markers based on number of locations (TRUE/FALSE).
 #' @param season_breaks_jul Ascending numeric vector of julian days (0-365) used to classify by season/parturition/hunting seasons etc.
 #'                          e.g., c(121, 274, 305) result may be: 1 Nov - 30 Apr (winter = 0), 1 May - 31 Aug (summer = 1), 1 Oct - 31 Oct (hunting season = 2)
 #' @param daylight_hrs Manually set start and stop hours (0-24) to classify day and night locations. - e.g. c(6,18) would classify 6AM - 6PM as daylight hrs.
 #'                     NA (default) uses 'suncalc' package to convert cluster location and time to be classified based on specific specific sunrise and sunset times.
 #'
-#' @return Returns "dat" dataframe, original location dataframe with "clus_ID" column assigning each row a cluster ID if applicable. Returns "clus_summary"
-#'         dataframe with sequential clusters for all animals and common attributes (descriptions below) of clusters as covariates for subsequent modeling. If show_plots is active, returns
-#'         interactive map of locations and clusters by animal.
+#' @return Returns a list containing two dataframes. The first contains the original location dataframe with "clus_ID" column assigning each row a cluster ID if applicable.
+#'         The second dataframe in the list contains a summary of sequential clusters and common cluster attributes (descriptions below) for subsequent modeling.
+#'         If 'show_plots' argument is active, returns interactive maps of locations and clusters by animal.
 #'
 #' \describe{
 #'   \item{AID}{Animal identification}
@@ -35,7 +36,7 @@
 #'                      These clusters are therefore solidified and should not change if appending new location data.
 #'                      "Open" if the time window remains open at the time the function was run. "Open" clusters have the ability
 #'                      to shift sequence, combine with other clusters, emerge as a new cluster, etc. This attribute becomes
-#'                      relevent when appending new satellite data to the location dataframe, and may serve as an index of whether
+#'                      relevant when appending new satellite data to the location dataframe, and may serve as an index of whether
 #'                      an animal continues to actively visit the cluster site within the time window.}
 #'   \item{g_c_Long}{Geometic centroid longitude value calculated using the mean}
 #'   \item{g_c_Lat}{Geometic centroid latitude value calculated using the mean}
@@ -43,7 +44,7 @@
 #'   \item{g_med_Lat}{Geometic centroid latitude value calculated using the median}
 #'   \item{clus_dur_hr}{Hours from the first to last locations of the cluster}
 #'   \item{n_clus_locs}{Number of locations within the cluster}
-#'   \item{visits}{Number of visits/revists to the cluster based on the number of times locations fall outside the search radius and return
+#'   \item{visits}{Number of visits/revisits to the cluster based on the number of times locations fall outside the search radius and return
 #'                 to add locations to the cluster}
 #'   \item{fix_succ_clus_dur}{Fix rate success during the duration of the cluster}
 #'   \item{adj_clus_locs}{Adjusted number of cluster locations accounting for missed fixes (number cluster locations / fix success of cluster duration)}
@@ -71,7 +72,7 @@
 #' @importFrom rgdal writeOGR
 #' @importFrom tcltk setTkProgressBar tkProgressBar
 #' @importFrom utils globalVariables setTxtProgressBar txtProgressBar
-#'
+#' @importFrom htmlwidgets onRender
 #'
 #' @export
 #'
@@ -81,12 +82,13 @@
 #'
 #' \donttest{
 #' GPSeq_clus(dat = ML_ex_dat, search_radius_m = 50, window_days = 2.5, clus_min_locs = 12,
-#'                  centroid_calc = "median", show_plots = c(TRUE, "median"),
-#'                  season_breaks_jul = c(120, 240, 300), daylight_hrs = c(8, 16))
+#'            centroid_calc = "median", show_plots = c(TRUE, "median"), scale_plot_clus = FALSE,
+#'            season_breaks_jul = c(120, 240, 300), daylight_hrs = c(8, 16))
 #' }
 #'
-GPSeq_clus<-function(dat, search_radius_m, window_days, clus_min_locs=2, centroid_calc="mean", show_plots=c(TRUE, "mean"), season_breaks_jul=NA, daylight_hrs=NA){
+GPSeq_clus<-function(dat, search_radius_m, window_days, clus_min_locs=2, centroid_calc="mean", show_plots=c(TRUE, "mean"), scale_plot_clus=TRUE, season_breaks_jul=NA, daylight_hrs=NA){
   #ensure data is properly set up below
+  if(is.data.frame(dat)==FALSE){stop("GPSeq_clus requires input as dataframe.")}
   if(("AID" %in% colnames(dat))==FALSE){stop("No 'AID' column found.")}
   if(("TelemDate" %in% colnames(dat))==FALSE){stop("No 'TelemDate' column found.")}
   if(("Long" %in% colnames(dat))==FALSE){stop("No 'Long' column found.")}
@@ -387,7 +389,13 @@ GPSeq_clus<-function(dat, search_radius_m, window_days, clus_min_locs=2, centroi
           leaflet::addPolylines(data=out2,lng=~Long, lat=~Lat, weight=2, color="black", group="Locations") %>%
           leaflet::addProviderTiles(providers$Esri.NatGeoWorldMap)  #choose base layer
         if(nrow(clus_summary)>0){
-          a<- leaflet::addCircleMarkers(map=a,data=clus_plot, lng=~Long, lat=~Lat, radius=1, color="yellow",opacity=100,popup=~Popup, group="Clusters")
+          if(scale_plot_clus==TRUE){
+            a<- leaflet::addCircleMarkers(map=a,data=clus_plot, lng=~Long, lat=~Lat, radius=~n_clus_locs, color="yellow",opacity=100,popup=~Popup,group="Clusters")
+          } else {
+            a<- leaflet::addCircleMarkers(map=a,data=clus_plot, lng=~Long, lat=~Lat, radius=1, color="yellow",opacity=100,popup=~Popup,group="Clusters")
+          }
+          a<-leaflet::addMarkers(map=a, data=clus_plot, lng=~Long, lat=~Lat, group="searchClusters", popup =~Popup,
+                                 icon = leaflet::makeIcon(iconUrl = "http://leafletjs.com/examples/custom-icons/leaf-green.png",iconWidth = 1, iconHeight = 1))
         }
         #Set up ESRI provided tiles
         esri <- providers %>%
@@ -409,7 +417,8 @@ GPSeq_clus<-function(dat, search_radius_m, window_days, clus_min_locs=2, centroi
             options = leaflet::layersControlOptions(collapsed = TRUE),
             overlayGroups = c("Clusters","Locations"))%>%
           leaflet::addLegend(pal = pal2, values = out2$type, group = "Locations", opacity=100, position = "bottomleft")
-        a<-leaflet.extras::addSearchFeatures(map=a, targetGroups = "Clusters", options = leaflet.extras::searchFeaturesOptions(propertyName = 'popup', openPopup=T, zoom=15, hideMarkerOnCollapse=T))
+        a<-leaflet.extras::addSearchFeatures(map=a, targetGroups = "searchClusters", options = leaflet.extras::searchFeaturesOptions(propertyName = 'popup', openPopup=T, zoom=15, hideMarkerOnCollapse=T))
+        a <- a %>% addTitle(text=out2$AID[1], color= "black", fontSize= "18px", leftPosition = 50, topPosition=2)
         print(a)
         if(nrow(clus_summary)>0){rm(clus_plot)}
         rm(a, esri, out2, pal2)
@@ -437,6 +446,5 @@ GPSeq_clus<-function(dat, search_radius_m, window_days, clus_min_locs=2, centroi
   rm(dat2)
   clus_summary<-t_summ  #write the cluster summary info back to clus_summary
   rm(pb, zz, uni_AID, out_all, t_summ)
-  .GlobalEnv$dat <- dat
-  .GlobalEnv$clus_summary <- clus_summary
+  return(list(dat, clus_summary))
 }

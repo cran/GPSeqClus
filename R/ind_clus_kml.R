@@ -4,8 +4,8 @@
 #'
 #' @param AID Desired AID from sequential cluster output
 #' @param cn Desired cluster number
-#' @param locs Location dataframe output from GPSeq_clus(), default is 'dat'
-#' @param cs Cluster summary output from GPSeq_clus(), default is 'clus_summary'
+#' @param locs Location dataframe output from GPSeq_clus()
+#' @param cs Cluster summary output from GPSeq_clus()
 #' @param centroid_calc 'mean' (default) or 'median' centroid plot
 #' @param overwrite TRUE (default) labels output as "ind.kml" that overwrites with each run within tempdir(). FALSE saves outputs as "AID_cn"
 #' @param dir File path when saving output
@@ -15,17 +15,15 @@
 #'
 #' @examples
 #' \donttest{
-#' GPSeq_clus(dat = ML_ex_dat[1:50,], search_radius_m = 200, window_days = 6,
-#'            clus_min_locs = 3, show_plots = c(FALSE, "mean"))
-#' ind_clus_kml(AID = "ML1605M", cn = 4)
-#' }
-#' \donttest{
-#' GPSeq_clus(dat = ML_ex_dat[1:50,], search_radius_m = 200, window_days = 6,
-#'            clus_min_locs = 3, show_plots = c(FALSE, "mean"))
-#' ind_clus_kml(AID = "ML1605M", cn = 4, centroid_calc = "median", overwrite = FALSE, dir= tempdir())
+#' ind_clus_kml(AID = "ML1605M", cn = 4,
+#'              locs = GPSeq_clus(dat = ML_ex_dat[1:50,], search_radius_m = 200, window_days = 6,
+#'                     clus_min_locs = 3, show_plots = c(FALSE, "mean"))[[1]],
+#'              cs = GPSeq_clus(dat = ML_ex_dat[1:50,], search_radius_m = 200, window_days = 6,
+#'                   clus_min_locs = 3, show_plots = c(FALSE, "mean"))[[2]]
+#' )
 #' }
 #'
-ind_clus_kml<- function(AID, cn, locs=dat, cs=clus_summary, centroid_calc= "mean", overwrite= TRUE, dir= NULL){
+ind_clus_kml<- function(AID, cn, locs, cs, centroid_calc= "mean", overwrite= TRUE, dir= NULL){
   store_dir<-getwd()
   on.exit(setwd(store_dir))
   if(AID %in% cs$AID == FALSE){stop(paste("AID", AID, "not found", sep=" "))}

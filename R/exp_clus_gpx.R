@@ -5,8 +5,8 @@
 #'
 #' @param AID Desired AID from sequential cluster output
 #' @param cn Numeric vector of desired cluster numbers to include in .gpx output, default is "all"
-#' @param locs Location dataframe output from GPSeq_clus(), default is 'dat'
-#' @param cs Cluster summary output from GPSeq_clus(), default is 'clus_summary'
+#' @param locs Location dataframe output from GPSeq_clus()
+#' @param cs Cluster summary output from GPSeq_clus()
 #' @param centroid_calc 'mean' (default) or 'median' centroid plot
 #' @param dir File path to save output
 #'
@@ -15,22 +15,21 @@
 #'
 #' @examples
 #' \donttest{
-#' GPSeq_clus(dat = ML_ex_dat[1:50,], search_radius_m = 200, window_days = 6,
-#'            clus_min_locs = 3, show_plots = c(FALSE, "mean"))
-#' exp_clus_gpx(AID = "ML1605M", cn = 4, dir= tempdir())
-#' }
-#' \donttest{
-#' GPSeq_clus(dat = ML_ex_dat[1:50,], search_radius_m = 200, window_days = 6,
-#'            clus_min_locs = 3, show_plots = c(FALSE, "mean"))
-#' exp_clus_gpx(AID = "ML1605M", cn = c(1, 3, 4), centroid_calc = "median", dir= tempdir())
+#' exp_clus_gpx(AID = "ML1605M", cn = 4,
+#'              locs = GPSeq_clus(dat = ML_ex_dat[1:50,], search_radius_m = 200, window_days = 6,
+#'                     clus_min_locs = 3, show_plots = c(FALSE, "mean"))[[1]],
+#'              cs = GPSeq_clus(dat = ML_ex_dat[1:50,], search_radius_m = 200, window_days = 6,
+#'                   clus_min_locs = 3, show_plots = c(FALSE, "mean"))[[2]],
+#'              dir= tempdir()
+#' )
 #' }
 #'
-exp_clus_gpx<-function(AID, cn= "all", locs=dat, cs=clus_summary, centroid_calc="mean", dir= NULL){
+exp_clus_gpx<-function(AID, cn= "all", locs, cs, centroid_calc="mean", dir= NULL){
   if(AID %in% cs$AID == FALSE){stop(paste("AID", AID, "not found", sep=" "))}
   if(cn[1] == "all"){cn<-cs[which(cs$AID == AID),"clus_ID"]}
   clus_sub<-cs[which(cs$AID == AID & cs$clus_ID %in% cn),]
   if(length(cn[-which(cn %in% cs$clus_ID)])>0){stop(paste("Cluster(s)", paste(cn[-which(cn %in% cs$clus_ID)], collapse=","), "do not exist in cluster summary", sep=" "))}
-  out_all<- dat[which(dat$AID == AID),]
+  out_all<- locs[which(locs$AID == AID),]
   sites<-NA
   for(p in 1:nrow(clus_sub)){
     ind_clus<-out_all[which(out_all$clus_ID == clus_sub$clus_ID[p]),]

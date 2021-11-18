@@ -4,13 +4,15 @@
 \name{ML_ex_dat}
 \alias{ML_ex_dat}
 \title{Sample Data for Sequential Clustering Routine}
-\format{A \code{dataframe} containing 4 columns:
+\format{
+A \code{dataframe} containing 4 columns:
 \describe{
 \item{AID}{animal identification}
 \item{TelemDate}{location timestamp in POSIXct format}
 \item{Lat}{latitude coordinates}
 \item{Long}{longitude coordinates}
-}}
+}
+}
 \usage{
 ML_ex_dat
 }

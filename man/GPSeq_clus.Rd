@@ -11,6 +11,7 @@ GPSeq_clus(
   clus_min_locs = 2,
   centroid_calc = "mean",
   show_plots = c(TRUE, "mean"),
+  scale_plot_clus = TRUE,
   season_breaks_jul = NA,
   daylight_hrs = NA
 )
@@ -35,6 +36,8 @@ plotting the "mean" or "median" centroid once a cluster has been built.}
 
 \item{show_plots}{Vector of TRUE/FALSE for plotting followed by plotting argument for the "median" or "mean" centroid - e.g., c(TRUE, "mean") (default)}
 
+\item{scale_plot_clus}{When plotting, scale cluster markers based on number of locations (TRUE/FALSE).}
+
 \item{season_breaks_jul}{Ascending numeric vector of julian days (0-365) used to classify by season/parturition/hunting seasons etc.
 e.g., c(121, 274, 305) result may be: 1 Nov - 30 Apr (winter = 0), 1 May - 31 Aug (summer = 1), 1 Oct - 31 Oct (hunting season = 2)}
 
@@ -42,9 +45,9 @@ e.g., c(121, 274, 305) result may be: 1 Nov - 30 Apr (winter = 0), 1 May - 31 Au
 NA (default) uses 'suncalc' package to convert cluster location and time to be classified based on specific specific sunrise and sunset times.}
 }
 \value{
-Returns "dat" dataframe, original location dataframe with "clus_ID" column assigning each row a cluster ID if applicable. Returns "clus_summary"
-        dataframe with sequential clusters for all animals and common attributes (descriptions below) of clusters as covariates for subsequent modeling. If show_plots is active, returns
-        interactive map of locations and clusters by animal.
+Returns a list containing two dataframes. The first contains the original location dataframe with "clus_ID" column assigning each row a cluster ID if applicable.
+        The second dataframe in the list contains a summary of sequential clusters and common cluster attributes (descriptions below) for subsequent modeling.
+        If 'show_plots' argument is active, returns interactive maps of locations and clusters by animal.
 
 \describe{
   \item{AID}{Animal identification}
@@ -55,7 +58,7 @@ Returns "dat" dataframe, original location dataframe with "clus_ID" column assig
                      These clusters are therefore solidified and should not change if appending new location data.
                      "Open" if the time window remains open at the time the function was run. "Open" clusters have the ability
                      to shift sequence, combine with other clusters, emerge as a new cluster, etc. This attribute becomes
-                     relevent when appending new satellite data to the location dataframe, and may serve as an index of whether
+                     relevant when appending new satellite data to the location dataframe, and may serve as an index of whether
                      an animal continues to actively visit the cluster site within the time window.}
   \item{g_c_Long}{Geometic centroid longitude value calculated using the mean}
   \item{g_c_Lat}{Geometic centroid latitude value calculated using the mean}
@@ -63,7 +66,7 @@ Returns "dat" dataframe, original location dataframe with "clus_ID" column assig
   \item{g_med_Lat}{Geometic centroid latitude value calculated using the median}
   \item{clus_dur_hr}{Hours from the first to last locations of the cluster}
   \item{n_clus_locs}{Number of locations within the cluster}
-  \item{visits}{Number of visits/revists to the cluster based on the number of times locations fall outside the search radius and return
+  \item{visits}{Number of visits/revisits to the cluster based on the number of times locations fall outside the search radius and return
                 to add locations to the cluster}
   \item{fix_succ_clus_dur}{Fix rate success during the duration of the cluster}
   \item{adj_clus_locs}{Adjusted number of cluster locations accounting for missed fixes (number cluster locations / fix success of cluster duration)}
@@ -89,8 +92,8 @@ GPSeq_clus(dat = ML_ex_dat[1:50,], search_radius_m = 200, window_days = 6,
 
 \donttest{
 GPSeq_clus(dat = ML_ex_dat, search_radius_m = 50, window_days = 2.5, clus_min_locs = 12,
-                 centroid_calc = "median", show_plots = c(TRUE, "median"),
-                 season_breaks_jul = c(120, 240, 300), daylight_hrs = c(8, 16))
+           centroid_calc = "median", show_plots = c(TRUE, "median"), scale_plot_clus = FALSE,
+           season_breaks_jul = c(120, 240, 300), daylight_hrs = c(8, 16))
 }
 
 }
