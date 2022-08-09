@@ -12,6 +12,7 @@ GPSeq_clus(
   centroid_calc = "mean",
   show_plots = c(TRUE, "mean"),
   scale_plot_clus = TRUE,
+  store_plots = FALSE,
   season_breaks_jul = NA,
   daylight_hrs = NA
 )
@@ -37,6 +38,8 @@ plotting the "mean" or "median" centroid once a cluster has been built.}
 \item{show_plots}{Vector of TRUE/FALSE for plotting followed by plotting argument for the "median" or "mean" centroid - e.g., c(TRUE, "mean") (default)}
 
 \item{scale_plot_clus}{When plotting, scale cluster markers based on number of locations (TRUE/FALSE).}
+
+\item{store_plots}{When plotting, also assign map outputs to global environment (TRUE/FALSE).}
 
 \item{season_breaks_jul}{Ascending numeric vector of julian days (0-365) used to classify by season/parturition/hunting seasons etc.
 e.g., c(121, 274, 305) result may be: 1 Nov - 30 Apr (winter = 0), 1 May - 31 Aug (summer = 1), 1 Oct - 31 Oct (hunting season = 2)}

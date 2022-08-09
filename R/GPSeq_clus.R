@@ -18,6 +18,7 @@
 #'                      plotting the "mean" or "median" centroid once a cluster has been built.
 #' @param show_plots Vector of TRUE/FALSE for plotting followed by plotting argument for the "median" or "mean" centroid - e.g., c(TRUE, "mean") (default)
 #' @param scale_plot_clus When plotting, scale cluster markers based on number of locations (TRUE/FALSE).
+#' @param store_plots When plotting, also assign map outputs to global environment (TRUE/FALSE).
 #' @param season_breaks_jul Ascending numeric vector of julian days (0-365) used to classify by season/parturition/hunting seasons etc.
 #'                          e.g., c(121, 274, 305) result may be: 1 Nov - 30 Apr (winter = 0), 1 May - 31 Aug (summer = 1), 1 Oct - 31 Oct (hunting season = 2)
 #' @param daylight_hrs Manually set start and stop hours (0-24) to classify day and night locations. - e.g. c(6,18) would classify 6AM - 6PM as daylight hrs.
@@ -86,7 +87,7 @@
 #'            season_breaks_jul = c(120, 240, 300), daylight_hrs = c(8, 16))
 #' }
 #'
-GPSeq_clus<-function(dat, search_radius_m, window_days, clus_min_locs=2, centroid_calc="mean", show_plots=c(TRUE, "mean"), scale_plot_clus=TRUE, season_breaks_jul=NA, daylight_hrs=NA){
+GPSeq_clus<-function(dat, search_radius_m, window_days, clus_min_locs=2, centroid_calc="mean", show_plots=c(TRUE, "mean"), scale_plot_clus=TRUE, store_plots=FALSE, season_breaks_jul=NA, daylight_hrs=NA){
   #ensure data is properly set up below
   if(is.data.frame(dat)==FALSE){stop("GPSeq_clus requires input as dataframe.")}
   if(("AID" %in% colnames(dat))==FALSE){stop("No 'AID' column found.")}
@@ -396,6 +397,7 @@ GPSeq_clus<-function(dat, search_radius_m, window_days, clus_min_locs=2, centroi
           }
           a<-leaflet::addMarkers(map=a, data=clus_plot, lng=~Long, lat=~Lat, group="searchClusters", popup =~Popup,
                                  icon = leaflet::makeIcon(iconUrl = "http://leafletjs.com/examples/custom-icons/leaf-green.png",iconWidth = 1, iconHeight = 1))
+          a<-leaflet.extras::addSearchFeatures(map=a, targetGroups = "searchClusters", options = leaflet.extras::searchFeaturesOptions(propertyName = 'popup', openPopup=T, zoom=15, hideMarkerOnCollapse=T))
         }
         #Set up ESRI provided tiles
         esri <- providers %>%
@@ -417,10 +419,12 @@ GPSeq_clus<-function(dat, search_radius_m, window_days, clus_min_locs=2, centroi
             options = leaflet::layersControlOptions(collapsed = TRUE),
             overlayGroups = c("Clusters","Locations"))%>%
           leaflet::addLegend(pal = pal2, values = out2$type, group = "Locations", opacity=100, position = "bottomleft")
-        a<-leaflet.extras::addSearchFeatures(map=a, targetGroups = "searchClusters", options = leaflet.extras::searchFeaturesOptions(propertyName = 'popup', openPopup=T, zoom=15, hideMarkerOnCollapse=T))
         a <- a %>% addTitle(text=out2$AID[1], color= "black", fontSize= "18px", leftPosition = 50, topPosition=2)
         print(a)
         if(nrow(clus_summary)>0){rm(clus_plot)}
+        if(store_plots==T){
+          assign(paste0("Map_", print(as.character(out2$AID[1]))), a)
+        }
         rm(a, esri, out2, pal2)
       }
       if(!exists("t_summ") & (ncol(clus_summary)==23)){
