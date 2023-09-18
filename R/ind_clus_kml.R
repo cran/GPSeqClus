@@ -13,15 +13,6 @@
 #' @return Opens the cluster locations and centroid .kml for assessment.
 #' @export
 #'
-#' @examples
-#' \donttest{
-#' ind_clus_kml(AID = "ML1605M", cn = 4,
-#'              locs = GPSeq_clus(dat = ML_ex_dat[1:50,], search_radius_m = 200, window_days = 6,
-#'                     clus_min_locs = 3, show_plots = c(FALSE, "mean"))[[1]],
-#'              cs = GPSeq_clus(dat = ML_ex_dat[1:50,], search_radius_m = 200, window_days = 6,
-#'                   clus_min_locs = 3, show_plots = c(FALSE, "mean"))[[2]]
-#' )
-#' }
 #'
 ind_clus_kml<- function(AID, cn, locs, cs, centroid_calc= "mean", overwrite= TRUE, dir= NULL){
   store_dir<-getwd()
@@ -43,27 +34,74 @@ ind_clus_kml<- function(AID, cn, locs, cs, centroid_calc= "mean", overwrite= TRU
   }
   aa<-ind_clus[1,]
   aa$AID2<-"Centroid"
-  aa$TelemDate<-ind_clus$TelemDate[nrow(ind_clus)]+25200 #this adds a generic time to the end of the cluster
+  aa$TelemDate<-NA
   aa$Lat<-spgeo$coords.x2
   aa$Long<-spgeo$coords.x1
   ind_clus<-rbind(ind_clus, aa)
   if(overwrite==TRUE){
-    f_name<-"ind.kml"
+    f_name<-"ind"
     setwd(tempdir())
   } else {
-    f_name<-paste(AID, "_", cn, ".kml", sep="")
+    f_name<-paste(AID, "_", cn, sep="")
     setwd(dir)
   }
-  sp<- sp::SpatialPoints(ind_clus[,c("Long","Lat")]) #set up spatial points from out data
-  sp::proj4string(sp) <- sp::CRS("+proj=longlat +datum=WGS84") #correct projection
-  ST<- spacetime::STIDF(sp=sp,time=ind_clus$TelemDate, data=ind_clus)  #create a spacetime layer
-  ind_clus[which(ind_clus$AID2 == "Centroid"), "TelemDate"]<- NA
-  plotKML::plotKML(obj=ST, folder.name=paste(AID, "_", cn, sep="") , file.name=f_name,
-          size= .45,
-          colour=,
-          points_names= paste(ind_clus$AID2,ind_clus$AID,ind_clus$clus_ID,ind_clus$TelemDate,sep=" "),
-          metadata=NULL,
-          open.kml=TRUE,
-          LabelScale=0.6)
-  rm(spgeo, sp, ST, aa, ind_clus, f_name, clus_g_c)
+  ind_clus<- sp::SpatialPointsDataFrame(matrix(c(ind_clus$Long, ind_clus$Lat), ncol=2), ind_clus, proj4string=sp::CRS("+proj=longlat +datum=WGS84"))
+  #set the name of the field you want in the gps
+  ind_clus@data$name<-paste(ind_clus$AID[1], ind_clus$clus_ID, ind_clus$AID2, ind_clus@data$TelemDate, sep=" ")
+  sf <- sf::st_as_sf(ind_clus)
+  sf$name[sf$AID2=="Centroid"]=paste(ind_clus$AID[1], ind_clus$clus_ID[1], "Centroid", sep=" ")
+  #write basic kml
+  sf::st_write(obj= sf["name"], driver="KML", dsn= if(overwrite==TRUE){paste0(tempdir(),"/", "ind.kml")}else{paste0(dir,"/",f_name, ".kml")}, delete_layer=TRUE)
+  #read back file to edit kml properties
+  ed<-readLines(if(overwrite==TRUE){paste0(tempdir(),"/", "ind.kml")}else{paste0(dir,"/",f_name, ".kml")}) #opens for script-based editing
+  #first edit in the color and scale layers
+  ed  <- gsub(pattern = paste0('<Folder><name>', f_name, '</name>'),
+              replacement = paste0('<Folder><name>', f_name, '</name>
+         <Style id="all">
+         <LabelStyle>
+         <scale>0.6</scale>
+         </LabelStyle>
+         <IconStyle>
+         <color>#ff1c1ae4</color>
+         <scale>0.45</scale>
+         <Icon>
+         <href>http://maps.google.com/mapfiles/kml/pal2/icon18.png</href>
+         </Icon>
+         </IconStyle>
+         <BalloonStyle>
+         <text>$[description]</text>
+         </BalloonStyle>
+         </Style>
+         <Style id="centroid">
+         <LabelStyle>
+         <scale>0.6</scale>
+         </LabelStyle>
+         <IconStyle>
+         <color>#ff999999</color>
+         <scale>0.45</scale>
+         <Icon>
+         <href>http://maps.google.com/mapfiles/kml/pal2/icon18.png</href>
+         </Icon>
+         </IconStyle>
+         <BalloonStyle>
+         <text>$[description]</text>
+         </BalloonStyle>
+         </Style>'), x = ed)
+  for(g in 1:nrow(sf)){ #now loop through for timestamps
+    if(g == nrow(sf)){
+      ed  <- gsub(pattern = paste0("Centroid", '</name'), replacement = paste0('Centroid','</name>', '<styleUrl>#centroid</styleUrl>'), x = ed)
+    } else {
+      ed  <- gsub(pattern = paste0(as.character(sf$TelemDate[g]), '</name>'), replacement = paste0(as.character(sf$TelemDate[g]),'</name>', '<styleUrl>#all</styleUrl>',
+                                                                                               '<TimeStamp><when>',
+                                                                                               gsub(" ", "", gsub(as.character(sf$TelemDate[g]), pattern = "(.{10})(.*)", replacement = "\\1T\\2"), fixed = TRUE),
+                                                                                               'Z</when></TimeStamp>'), x = ed)
+    }
+  }
+  #replace basic kml with edited version
+  writeLines(ed, con=if(overwrite==TRUE){paste0(tempdir(),"/", "ind.kml")}else {paste0(dir,"/",f_name, ".kml")})
+  #auto open
+  shell(if(overwrite==TRUE){paste0(tempdir(),"/", "ind.kml")}else{paste0(dir,"/",f_name, ".kml")}, wait=FALSE)
+  #clear objects
+  rm(spgeo, sf, g, ed, aa, ind_clus, f_name, clus_g_c)
 }
+

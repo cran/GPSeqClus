@@ -35,14 +35,3 @@ Opens the cluster locations and centroid .kml for assessment.
 \description{
 Uses results from 'GPSeq_clus" to plot individual cluster .kmls
 }
-\examples{
-\donttest{
-ind_clus_kml(AID = "ML1605M", cn = 4,
-             locs = GPSeq_clus(dat = ML_ex_dat[1:50,], search_radius_m = 200, window_days = 6,
-                    clus_min_locs = 3, show_plots = c(FALSE, "mean"))[[1]],
-             cs = GPSeq_clus(dat = ML_ex_dat[1:50,], search_radius_m = 200, window_days = 6,
-                  clus_min_locs = 3, show_plots = c(FALSE, "mean"))[[2]]
-)
-}
-
-}

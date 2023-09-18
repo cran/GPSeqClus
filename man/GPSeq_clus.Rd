@@ -14,7 +14,8 @@ GPSeq_clus(
   scale_plot_clus = TRUE,
   store_plots = FALSE,
   season_breaks_jul = NA,
-  daylight_hrs = NA
+  daylight_hrs = NA,
+  prbar = TRUE
 )
 }
 \arguments{
@@ -46,6 +47,8 @@ e.g., c(121, 274, 305) result may be: 1 Nov - 30 Apr (winter = 0), 1 May - 31 Au
 
 \item{daylight_hrs}{Manually set start and stop hours (0-24) to classify day and night locations. - e.g. c(6,18) would classify 6AM - 6PM as daylight hrs.
 NA (default) uses 'suncalc' package to convert cluster location and time to be classified based on specific specific sunrise and sunset times.}
+
+\item{prbar}{Show progress bars (TRUE/FALSE).}
 }
 \value{
 Returns a list containing two dataframes. The first contains the original location dataframe with "clus_ID" column assigning each row a cluster ID if applicable.
@@ -96,7 +99,7 @@ GPSeq_clus(dat = ML_ex_dat[1:50,], search_radius_m = 200, window_days = 6,
 \donttest{
 GPSeq_clus(dat = ML_ex_dat, search_radius_m = 50, window_days = 2.5, clus_min_locs = 12,
            centroid_calc = "median", show_plots = c(TRUE, "median"), scale_plot_clus = FALSE,
-           season_breaks_jul = c(120, 240, 300), daylight_hrs = c(8, 16))
+           season_breaks_jul = c(120, 240, 300), daylight_hrs = c(8, 16), prbar=FALSE)
 }
 
 }

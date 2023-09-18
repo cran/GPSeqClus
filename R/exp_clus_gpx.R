@@ -57,5 +57,7 @@ exp_clus_gpx<-function(AID, cn= "all", locs, cs, centroid_calc="mean", dir= NULL
   ind_gpx<- sp::SpatialPointsDataFrame(matrix(c(sites$Long, sites$Lat), ncol=2), sites, proj4string=sp::CRS("+proj=longlat +datum=WGS84"))
   #set the name of the field you want in the gps
   ind_gpx@data$name<-paste(out_all$AID[1], sites$clus_ID, sites$AID2, ind_gpx@data$TelemDate, sep=" ")
-  rgdal::writeOGR(obj=ind_gpx["name"], layer="waypoints", driver="GPX", dsn= paste0(dir,"/",out_all$AID[1],".gpx") ,overwrite_layer=TRUE, dataset_options="GPS_USE_EXTENSIONS=yes")
+  #sf object to write gpx
+  sf <- sf::st_as_sf(ind_gpx)
+  sf::st_write(obj= sf["name"], driver="GPX", dsn= paste0(dir,"/",out_all$AID[1],".gpx"), delete_layer=TRUE)
 }

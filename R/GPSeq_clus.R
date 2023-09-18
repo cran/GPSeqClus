@@ -23,6 +23,7 @@
 #'                          e.g., c(121, 274, 305) result may be: 1 Nov - 30 Apr (winter = 0), 1 May - 31 Aug (summer = 1), 1 Oct - 31 Oct (hunting season = 2)
 #' @param daylight_hrs Manually set start and stop hours (0-24) to classify day and night locations. - e.g. c(6,18) would classify 6AM - 6PM as daylight hrs.
 #'                     NA (default) uses 'suncalc' package to convert cluster location and time to be classified based on specific specific sunrise and sunset times.
+#' @param prbar Show progress bars (TRUE/FALSE).
 #'
 #' @return Returns a list containing two dataframes. The first contains the original location dataframe with "clus_ID" column assigning each row a cluster ID if applicable.
 #'         The second dataframe in the list contains a summary of sequential clusters and common cluster attributes (descriptions below) for subsequent modeling.
@@ -60,17 +61,15 @@
 #'   \item{night_prop}{Proportion of night cluster locations}
 #' }
 #'
-#' @import sp
+#' @importFrom sp SpatialPointsDataFrame CRS
+#' @importFrom sf st_as_sf st_write
 #' @importFrom geosphere distHaversine distm
 #' @importFrom suncalc getSunlightTimes
-#' @importFrom stats median
+#' @importFrom stats median na.omit
 #' @import plyr
 #' @importFrom purrr keep walk
 #' @import leaflet
 #' @importFrom leaflet.extras addSearchFeatures searchFeaturesOptions
-#' @importFrom spacetime STIDF
-#' @importFrom plotKML plotKML
-#' @importFrom rgdal writeOGR
 #' @importFrom tcltk setTkProgressBar tkProgressBar
 #' @importFrom utils globalVariables setTxtProgressBar txtProgressBar
 #' @importFrom htmlwidgets onRender
@@ -84,10 +83,10 @@
 #' \donttest{
 #' GPSeq_clus(dat = ML_ex_dat, search_radius_m = 50, window_days = 2.5, clus_min_locs = 12,
 #'            centroid_calc = "median", show_plots = c(TRUE, "median"), scale_plot_clus = FALSE,
-#'            season_breaks_jul = c(120, 240, 300), daylight_hrs = c(8, 16))
+#'            season_breaks_jul = c(120, 240, 300), daylight_hrs = c(8, 16), prbar=FALSE)
 #' }
 #'
-GPSeq_clus<-function(dat, search_radius_m, window_days, clus_min_locs=2, centroid_calc="mean", show_plots=c(TRUE, "mean"), scale_plot_clus=TRUE, store_plots=FALSE, season_breaks_jul=NA, daylight_hrs=NA){
+GPSeq_clus<-function(dat, search_radius_m, window_days, clus_min_locs=2, centroid_calc="mean", show_plots=c(TRUE, "mean"), scale_plot_clus=TRUE, store_plots=FALSE, season_breaks_jul=NA, daylight_hrs=NA, prbar=TRUE){
   #ensure data is properly set up below
   if(is.data.frame(dat)==FALSE){stop("GPSeq_clus requires input as dataframe.")}
   if(("AID" %in% colnames(dat))==FALSE){stop("No 'AID' column found.")}
@@ -116,14 +115,15 @@ GPSeq_clus<-function(dat, search_radius_m, window_days, clus_min_locs=2, centroi
     if(any(season_breaks_jul<0 | season_breaks_jul>365)==TRUE){stop("Invalid 'season_breaks_jul' argument. Arguments must be 0-365.")}
     if((all(diff(season_breaks_jul)>0))==FALSE){stop("Invalid 'season_breaks_jul' argument. Arguments must be in acending order.")}
   }
-  dat<-dat[order(dat$AID,dat$TelemDate),]     #make sure we have this line active in final function, hashed for testing
+  dat<-dat[order(dat$AID,dat$TelemDate),] #begin by ordering the data
   #set up location data output with cluster number attribute
   dat2<-dat[1,]
   dat2$clus_ID<-NA
   dat2<-dat2[-1,]
   uni_AID<-as.character(unique(dat$AID))            #loop through AIDs
-  message("TOTAL PROGRESS")
-  pb <- utils::txtProgressBar(min=0, max=length(uni_AID), style=3)   #initiate base progress bar
+  if(prbar==TRUE){
+    message("TOTAL PROGRESS")
+    pb <- utils::txtProgressBar(min=0, max=length(uni_AID), style=3)}  #initiate base progress bar
   for(zz in 1:length(uni_AID)) {                        #start loop
     out_all<-subset(dat, AID == uni_AID[zz])                                    #get rows per AID
     if(length(which(is.na(out_all$Lat)))==0){warning(paste(uni_AID[zz], "shows no missed locations. Ensure 'failed' fix attempts are included for accurate cluster attributes."))}
@@ -140,7 +140,7 @@ GPSeq_clus<-function(dat, search_radius_m, window_days, clus_min_locs=2, centroi
       out<-moveMe(out, "index", "first")
       #first internal loop with windows progress bar and label by animal and process
       c<-1                                                                    #seed ticker for sequential cluster numbers
-      pb2 <- tcltk::tkProgressBar(min = 0, max = nrow(out), width = 500)
+      if(prbar==TRUE){pb2 <- tcltk::tkProgressBar(min = 0, max = nrow(out), width = 500)}
       for(j in 1:nrow(out)){                                                  #for each sequential location
         if(out$ClusID[j] == 0){                                              #IF THE LOCATION HAS NOT BEEN ASSIGNED A CLUSTER
           cent<-c(out[j,"Long"], out[j,"Lat"])                                   #LL reference point location as cluster centroid
@@ -210,10 +210,15 @@ GPSeq_clus<-function(dat, search_radius_m, window_days, clus_min_locs=2, centroi
             }
           }
         }
-        tcltk::setTkProgressBar(pb2, j, title=paste("Animal", uni_AID[zz], "...building clusters...", round(j/nrow(out)*100, 0), "% completed"))                                                        #update progress bar
+        if(prbar==TRUE){tcltk::setTkProgressBar(pb2, j, title=paste("Animal", uni_AID[zz], "...building clusters...", round(j/nrow(out)*100, 0), "% completed"))}                                                       #update progress bar
       }
-      close(pb2)
-      rm(pb2,b,c,m,j,t,AR_Clus,cent)
+      if(prbar==TRUE){
+        close(pb2)
+        rm(pb2,b,c,m,j,t,AR_Clus,cent)
+      } else {
+        rm(b,c,m,j,t,AR_Clus,cent)
+      }
+
       ###################fin primary cluster algroythm
       see<-rle(out$ClusID)                                          #run the rle function, to get bouts of identical values (cluster IDs)
       bout_end<- cumsum(rle(out$ClusID)$lengths)                    #record the start row
@@ -232,11 +237,11 @@ GPSeq_clus<-function(dat, search_radius_m, window_days, clus_min_locs=2, centroi
       bouts2<-bouts2[order(bouts2$ClusID, bouts2$bout_start),]      #sort by cluster ID and bout start
       #summarize clusters
       clus_summary<-plyr::ddply(bouts2, "ClusID", summarize,
-                          clus_start= min(bout_start), clus_end= max(bout_end),
-                          clus_dur_hr=round(difftime(max(bout_end), min(bout_start), units="hours"),1),
-                          n_clus_locs= sum(consec_locs))
+                                clus_start= min(bout_start), clus_end= max(bout_end),
+                                clus_dur_hr=round(difftime(max(bout_end), min(bout_start), units="hours"),1),
+                                n_clus_locs= sum(consec_locs))
       #eliminate clusters that dont meet the required minimum number of locations
-      clus_summary<-clus_summary[which(clus_summary$n_clus_locs >= clus_min_locs),]          #need to add a check below and ensure at least one cluster exists
+      clus_summary<-clus_summary[which(clus_summary$n_clus_locs >= clus_min_locs),]
       if(nrow(clus_summary)==0){
         warning(paste("Zero clusters identified for", uni_AID[zz], "given user-entered parameters."))
         out_all$clus_ID<-NA
@@ -254,7 +259,7 @@ GPSeq_clus<-function(dat, search_radius_m, window_days, clus_min_locs=2, centroi
         bouts2$ClusID<-NULL
         bouts2<-bouts2[which(!is.na(bouts2$clus_ID3)),]  #remove bouts associated with clusters that dont meet minimum point criteria
         #Calculate number of visits/revisits to each cluster and add as a cluster summary attribute
-        see<-rle(bouts2$clus_ID3)         #run the fancy rle again to get the number of revisits
+        see<-rle(bouts2$clus_ID3)         #run rle again to get the number of revisits
         clus_summary$visits<-see$lengths  #add number of visits to the cluster summary
         #now reattribute cluster IDs to the whole dataset including missed locations
         out_all$clus_ID3<-NA
@@ -275,8 +280,8 @@ GPSeq_clus<-function(dat, search_radius_m, window_days, clus_min_locs=2, centroi
         clus_summary[which(clus_summary$clus_end >= Sys.time() - as.difftime(window_days, units= "days")), "clus_status"]<- "Open"
         #calculate geometric center of clusters from cluster points and attribute to clus_summary    -- compare median vs mean location
         xxx<-plyr::ddply(out_all, "clus_ID", summarize,
-                   g_c_Long= mean(Long, na.rm=TRUE), g_c_Lat= mean(Lat, na.rm=TRUE), g_med_Long= stats::median(Long, na.rm=TRUE), g_med_Lat= stats::median(Lat, na.rm=TRUE))
-        xxx<-xxx[1:nrow(xxx)-1,] #remove the last row that summarizes non-cluster points
+                         g_c_Long= mean(Long, na.rm=TRUE), g_c_Lat= mean(Lat, na.rm=TRUE), g_med_Long= stats::median(Long, na.rm=TRUE), g_med_Lat= stats::median(Lat, na.rm=TRUE))
+        xxx<-stats::na.omit(xxx)  ### use na.omit() to account for cases where only one cluster is formed by all locations
         clus_summary<-cbind(clus_summary, xxx[,2:5]) #bind to cluster summary
         clus_summary<-moveMe(clus_summary,c("g_c_Long", "g_c_Lat", "g_med_Long", "g_med_Lat"), "after", "clus_status")
         rm(xxx)
@@ -294,7 +299,7 @@ GPSeq_clus<-function(dat, search_radius_m, window_days, clus_min_locs=2, centroi
         clus_summary$night_prop<-NA             # number night locs (1800-0600)/total cluster locs (night=0, day=1)
         if(!is.na(season_breaks_jul[1])){clus_summary$season<-0}  #if the season argument exists, set all to reference season == 0 before loop
         #loop to calculate attributes
-        pb3 <- tcltk::tkProgressBar(min = 0, max = nrow(clus_summary), width = 500)
+        if(prbar==TRUE){pb3 <- tcltk::tkProgressBar(min = 0, max = nrow(clus_summary), width = 500)}
         for(i in 1:nrow(clus_summary)){
           ggg<-out_all[which(out_all$TelemDate >= clus_summary$clus_start[i] & out_all$TelemDate <= clus_summary$clus_end[i]),] #subset cluster fix attempts
           clus_summary$fix_succ_clus_dur[i]<-round(nrow(ggg[which(!is.na(ggg$Lat)),])/nrow(ggg),2)                              #prop fix success during cluster duration
@@ -346,10 +351,14 @@ GPSeq_clus<-function(dat, search_radius_m, window_days, clus_min_locs=2, centroi
             clus_summary$night_prop[i]<-round(clus_summary$night_pts[i] / clus_summary$n_clus_locs[i],2)
             rm(dd, ttt)
           }
-          tcltk::setTkProgressBar(pb3, i, title=paste("Animal",uni_AID[zz], "...building cluster covariates...", round(i/nrow(clus_summary)*100, 0), "% completed"))
+          if(prbar==TRUE){tcltk::setTkProgressBar(pb3, i, title=paste("Animal",uni_AID[zz], "...building cluster covariates...", round(i/nrow(clus_summary)*100, 0), "% completed"))}
         }
-        close(pb3)
-        rm(pb3, ggg, fff, aa, i)
+        if(prbar==TRUE){
+          close(pb3)
+          rm(pb3, ggg, fff, aa, i)
+        } else {
+          rm(ggg, fff, aa, i)
+        }
         ####END cluster prep####
       }
       #####add leaflet plotting component
@@ -443,12 +452,13 @@ GPSeq_clus<-function(dat, search_radius_m, window_days, clus_min_locs=2, centroi
       }
     }
     dat2<-rbind(dat2,out_all)   #append dat2 with out_all data
-    utils::setTxtProgressBar(pb, zz)                         #update the base progress bar % for each animal
+    if(prbar==TRUE){utils::setTxtProgressBar(pb, zz)}                         #update the base progress bar % for each animal
   }
-  close(pb)                                          #when finished close the base progress bar
+  if(prbar==TRUE){close(pb)}                                          #when finished close the base progress bar
   dat<-dat2  #write the updated location output back to dat
   rm(dat2)
   clus_summary<-t_summ  #write the cluster summary info back to clus_summary
-  rm(pb, zz, uni_AID, out_all, t_summ)
+  if(prbar==TRUE){rm(pb)}
+  rm(zz, uni_AID, out_all, t_summ)
   return(list(dat, clus_summary))
 }
